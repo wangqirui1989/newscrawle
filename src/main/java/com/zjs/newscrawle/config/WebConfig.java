@@ -22,9 +22,18 @@ public class WebConfig {
 
     @Value("${web.url}")
     private String url;
-
+    
+    /***  
+     *    
+     * @author Qirui Wang  
+     * @date 11/8/18 10:56
+     * @usage 获得新闻链接
+     * @method getNewsLinkSet  
+     * @param  
+     * @return java.util.Set<org.jsoup.nodes.Element>  
+     */  
     @Bean
-    public Set<Element> newsLinkSet() {
+    public Set<Element> getNewsLinkSet() {
 
         Set<Element> linkSet = new HashSet<>();
 
