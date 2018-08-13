@@ -1,7 +1,10 @@
 package com.zjs.newscrawle.component;
 
+import com.zjs.newscrawle.service.NewsCrawlerService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import javax.annotation.Resource;
 
 /**
  * @Author: Qirui Wang
@@ -11,18 +14,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class TaskScheduling {
 
-    /**
-     *
-     * @author Qirui Wang
-     * @date 11/8/18 11:01
-     * @usage 定时任务
-     * @method executeService
-     * @param
-     * @return void
-     */
-    @Scheduled
-    public void executeService() {
-
-    }
+    @Resource
+    private NewsCrawlerService newsCrawlerService;
 
 }
