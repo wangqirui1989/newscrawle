@@ -17,7 +17,7 @@ public class NewscrawleApplicationTests {
 
     @Test
     public void contextLoads() throws Exception {
-        newsCrawlerService.newsFilter();
+
     }
 
 }

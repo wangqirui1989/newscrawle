@@ -1,6 +1,8 @@
 package com.zjs.newscrawle.service;
 
+import com.zjs.newscrawle.component.SinaDetailHandlerImpl;
 import com.zjs.newscrawle.config.WebConfig;
+import com.zjs.newscrawle.pojo.TwoTuple;
 import com.zjs.newscrawle.utils.HeadingEnum;
 import com.zjs.newscrawle.utils.Utils;
 import org.jsoup.Jsoup;
@@ -28,6 +30,9 @@ public class NewsCrawlerService {
 
     @Resource
     private WebConfig webConfig;
+
+    @Resource
+    private SinaDetailHandlerImpl sinaDetailHandler;
 
     private Elements links;
 
@@ -122,6 +127,14 @@ public class NewsCrawlerService {
         }
 
         return new TwoTuple<>(headSet, detailSet);
+    }
+
+    public void handlerHeadingLink() {
+
+    }
+
+    public void handlerDetailLinks() {
+
     }
 
 }

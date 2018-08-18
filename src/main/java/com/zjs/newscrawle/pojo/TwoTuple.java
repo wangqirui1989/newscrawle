@@ -1,4 +1,4 @@
-package com.zjs.newscrawle.service;
+package com.zjs.newscrawle.pojo;
 
 /**
  * @Author: Qirui Wang
