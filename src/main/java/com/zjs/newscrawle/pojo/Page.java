@@ -61,4 +61,18 @@ public class Page extends Statics implements Serializable {
     public void setSourceLink(String sourceLink) {
         this.sourceLink = sourceLink;
     }
+
+    @Override
+    public String toString() {
+        return "Page{" +
+                "website='" + website + '\'' +
+                ", category='" + category + '\'' +
+                ", title='" + title + '\'' +
+                ", createdTime='" + createdTime + '\'' +
+                ", link='" + link + '\'' +
+                ", author='" + author + '\'' +
+                ", source='" + source + '\'' +
+                ", sourceLink='" + sourceLink + '\'' + super.toString() +
+                '}';
+    }
 }

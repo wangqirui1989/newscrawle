@@ -1,7 +1,6 @@
 package com.zjs.newscrawle.component;
 
 import com.zjs.newscrawle.service.NewsCrawlerService;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;

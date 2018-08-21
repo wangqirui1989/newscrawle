@@ -4,4 +4,13 @@ server:
 
 web:
   url: http://news.sina.com.cn
+logging:
+  config: classpath:logback-boot.xml
+
+taskExecutor:
+  corePoolSize: 100
+  maxPoolSize: 200
+  queueCapacity: 500
+  threadNamePrefix: Executor-
+
 

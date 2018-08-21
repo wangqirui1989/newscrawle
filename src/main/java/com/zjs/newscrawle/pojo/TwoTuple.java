@@ -11,6 +11,9 @@ public class TwoTuple<E> {
 
     private E secondIndex;
 
+    public TwoTuple() {
+    }
+
     public TwoTuple(E firstIndex, E secondIndex) {
         this.firstIndex = firstIndex;
         this.secondIndex = secondIndex;

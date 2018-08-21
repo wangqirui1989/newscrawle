@@ -37,4 +37,13 @@ public class Statics {
     public int getComments() {
         return comments;
     }
+
+    @Override
+    public String toString() {
+        return "Statics{" +
+                "interview=" + interview +
+                ", hotHit=" + hotHit +
+                ", comments=" + comments +
+                '}';
+    }
 }

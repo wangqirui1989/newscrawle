@@ -1,7 +1,8 @@
 package com.zjs.newscrawle.service;
 
-import com.zjs.newscrawle.component.SinaDetailHandlerImpl;
+import com.zjs.newscrawle.component.DetailHandler;
 import com.zjs.newscrawle.config.WebConfig;
+import com.zjs.newscrawle.pojo.Page;
 import com.zjs.newscrawle.pojo.TwoTuple;
 import com.zjs.newscrawle.utils.HeadingEnum;
 import com.zjs.newscrawle.utils.Utils;
@@ -15,8 +16,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -32,9 +32,14 @@ public class NewsCrawlerService {
     private WebConfig webConfig;
 
     @Resource
-    private SinaDetailHandlerImpl sinaDetailHandler;
+    private DetailHandler detailHandler;
 
     private Elements links;
+
+    /**
+     * 自定义线程数
+     */
+    private static final int THREAD_NUM = 70;
 
     /***
      *
@@ -119,7 +124,7 @@ public class NewsCrawlerService {
         while (true) {
             if (headingTask.isDone() && detailTask.isDone()) {
                 headSet = headingTask.get();
-                detailSet = headingTask.get();
+                detailSet = detailTask.get();
 
                 Thread.sleep(1000);
                 break;
@@ -129,12 +134,59 @@ public class NewsCrawlerService {
         return new TwoTuple<>(headSet, detailSet);
     }
 
-    public void handlerHeadingLink() {
+    /**
+     *
+     * @author Qirui Wang
+     * @date 21/8/18 16:57
+     * @usage 处理详细页
+     * @method detailHandler
+     * @param set
+     * @return java.util.List<com.zjs.newscrawle.pojo.Page>
+     */
+    @SuppressWarnings("unchecked")
+    public List<Page> detailHandler(Set<Element> set) throws InterruptedException, ExecutionException {
+        //  构建任务组
+        Set<Element>[] elementArray;
+        Set[] tempArray = new Set[THREAD_NUM];
+        elementArray = (Set<Element>[]) tempArray;
 
-    }
+        // 任务分组
+        Iterator<Element> iterator = set.iterator();
+        int index = 0;
+        while (iterator.hasNext()) {
+            Element element = iterator.next();
+            int sequence = index % THREAD_NUM;
+            if (elementArray[sequence] == null) {
+                elementArray[sequence] = new HashSet<Element>(){{
+                    add(element);
+                }};
+            }
+            else {
+                elementArray[sequence].add(element);
+            }
+            index++;
+        }
 
-    public void handlerDetailLinks() {
+        // 执行异步操作
+        List<Future<List<Page>>> threadList = new ArrayList<>();
+        for (int i = 0;  i< THREAD_NUM; i++) {
+            threadList.add(detailHandler.detailAsyncTask(elementArray[i]));
+        }
 
+        List<Page> resultList = new ArrayList<>();
+
+        while (true) {
+            if (Utils.checkThreadArray(threadList)) {
+                for (int num = 0; num < THREAD_NUM; num++) {
+                    resultList.addAll(threadList.get(num).get());
+                }
+                break;
+            }
+        }
+
+        Thread.sleep(1000);
+
+        return resultList;
     }
 
 }

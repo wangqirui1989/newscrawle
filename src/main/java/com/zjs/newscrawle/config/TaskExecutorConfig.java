@@ -1,11 +1,13 @@
 package com.zjs.newscrawle.config;
 
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * @Author: Qirui Wang
@@ -14,6 +16,22 @@ import java.util.concurrent.Executor;
  */
 @Configuration
 public class TaskExecutorConfig implements AsyncConfigurer {
+
+    @Value("${taskExecutor.corePoolSize}")
+    private int corePoolSize;
+
+    @Value("${taskExecutor.maxPoolSize}")
+    private int maxPoolSize;
+
+    @Value("${taskExecutor.queueCapacity}")
+    private int queueCapacity;
+
+    @Value("${taskExecutor.threadNamePrefix}")
+    private String threadNamePrefix;
+
+    public int getCorePoolSize() {
+        return corePoolSize;
+    }
 
     /**
      *
@@ -27,9 +45,11 @@ public class TaskExecutorConfig implements AsyncConfigurer {
     @Override
     public Executor getAsyncExecutor() {
         ThreadPoolTaskExecutor threadPoolExecutor = new ThreadPoolTaskExecutor();
-        threadPoolExecutor.setCorePoolSize(5);
-        threadPoolExecutor.setMaxPoolSize(10);
-        threadPoolExecutor.setQueueCapacity(25);
+        threadPoolExecutor.setCorePoolSize(corePoolSize);
+        threadPoolExecutor.setMaxPoolSize(maxPoolSize);
+        threadPoolExecutor.setQueueCapacity(queueCapacity);
+        threadPoolExecutor.setThreadNamePrefix(threadNamePrefix);
+        threadPoolExecutor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
 
         threadPoolExecutor.initialize();
 
