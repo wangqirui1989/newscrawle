@@ -14,7 +14,21 @@ public class WebConfig {
     @Value("${web.url}")
     private String url;
 
+    @Value("${web.commentUrl}")
+    private String commentUrl;
+
+    @Value(("${web.agent}"))
+    private String agent;
+
     public String getUrl() {
         return url;
+    }
+
+    public String getCommentUrl() {
+        return commentUrl;
+    }
+
+    public String getAgent() {
+        return agent;
     }
 }

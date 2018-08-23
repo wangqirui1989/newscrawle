@@ -1,10 +1,13 @@
 package com.zjs.newscrawle.component;
 
 import com.zjs.newscrawle.component.asynctask.AsyncDetailHandlerComponent;
+import com.zjs.newscrawle.config.WebConfig;
+import com.zjs.newscrawle.filter.Filter;
 import com.zjs.newscrawle.pojo.Page;
 import com.zjs.newscrawle.pojo.Statics;
 import com.zjs.newscrawle.pojo.TwoTuple;
 import com.zjs.newscrawle.utils.Utils;
+import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -16,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -33,8 +37,13 @@ public class DetailHandler {
     @Resource
     private AsyncDetailHandlerComponent asyncDetailHandlerComponent;
 
-    private static Logger logger = LoggerFactory.getLogger(DetailHandler.class);
+    @Resource
+    private WebConfig webConfig;
 
+    @Resource
+    private Filter filter;
+
+    private static Logger logger = LoggerFactory.getLogger(DetailHandler.class);
 
     /**
      *
@@ -50,54 +59,61 @@ public class DetailHandler {
 
         long currentTimeMillis = System.currentTimeMillis();
 
-        Document doc = null;
         List<Page> pageList = new ArrayList<>();
         Utils.PageBuilder pageBuilder;
         for (Element element : set) {
+            String url = element.attr("href");
+            if (!filter.isValid(url)) {
+                try {
 
-            try {
-                String url = element.attr("href");
-                doc = Jsoup.connect(url).get();
-            } catch (IOException ioe) {
-                ioe.printStackTrace();
-            }
+                    Document doc = Jsoup.connect(url).timeout(50000).get();
 
-            if (doc != null) {
+                    if (doc != null) {
 
-                Future<TwoTuple<String>> titleAndCreatedTimeTask = asyncDetailHandlerComponent.getTitleAndCreatedTime(doc);
-                Future<TwoTuple<String>> getAuthorAndCategoryTask = asyncDetailHandlerComponent.getAuthorAndCategory(doc);
-                Future<TwoTuple<String>> getSourceAndSourceLinkTask = asyncDetailHandlerComponent.getSourceAndSourceLink(doc);
-                Future<Statics> getStaticsTask = asyncDetailHandlerComponent.getStatics(doc);
+                        Future<TwoTuple<String>> titleAndCreatedTimeTask = asyncDetailHandlerComponent.getTitleAndCreatedTime(doc);
+                        Future<TwoTuple<String>> getAuthorAndCategoryTask = asyncDetailHandlerComponent.getAuthorAndCategory(doc);
+                        Future<TwoTuple<String>> getSourceAndSourceLinkTask = asyncDetailHandlerComponent.getSourceAndSourceLink(doc);
+                        Future<Statics> getStaticsTask = asyncDetailHandlerComponent.getStatics(doc, url);
 
-                while (true) {
-                    if (titleAndCreatedTimeTask.isDone() && getAuthorAndCategoryTask.isDone() &&
-                            getSourceAndSourceLinkTask.isDone() && getStaticsTask.isDone()) {
-                        TwoTuple<String> titleAndCreatedTime = titleAndCreatedTimeTask.get();
-                        TwoTuple<String> authorAndCategory = getAuthorAndCategoryTask.get();
-                        TwoTuple<String> sourceAndSourceLink = getSourceAndSourceLinkTask.get();
-                        Statics statics = getStaticsTask.get();
+                        while (true) {
+                            if (titleAndCreatedTimeTask.isDone() && getAuthorAndCategoryTask.isDone() &&
+                                    getSourceAndSourceLinkTask.isDone() && getStaticsTask.isDone()) {
+                                TwoTuple<String> titleAndCreatedTime = titleAndCreatedTimeTask.get();
+                                TwoTuple<String> authorAndCategory = getAuthorAndCategoryTask.get();
+                                TwoTuple<String> sourceAndSourceLink = getSourceAndSourceLinkTask.get();
+                                Statics statics = getStaticsTask.get();
 
-                        // 构建返回数据格式
-                        pageBuilder = new Utils.PageBuilder();
-                        pageBuilder.buildAuthor(Utils.getAuthor(authorAndCategory.getFirstIndex()));
-                        pageBuilder.buildCreatedTime(titleAndCreatedTime.getSecondIndex());
-                        pageBuilder.buildTitle(titleAndCreatedTime.getFirstIndex());
-                        pageBuilder.buildLink(element.attr("href"));
-                        pageBuilder.buildSource(sourceAndSourceLink.getFirstIndex());
-                        pageBuilder.buildSourceLink(sourceAndSourceLink.getSecondIndex());
-                        pageBuilder.buildInterview(statics.getInterview());
-                        pageBuilder.buildHotHits(statics.getHotHit());
-                        pageBuilder.buildComments(statics.getComments());
-                        pageBuilder.buildCategory(authorAndCategory.getSecondIndex());
+                                // 构建返回数据格式
 
-                        pageList.add(pageBuilder.buildPage());
+                                pageBuilder = new Utils.PageBuilder();
+                                pageBuilder.buildWebSite(webConfig.getUrl());
+                                pageBuilder.buildAuthor(Utils.getAuthor(authorAndCategory.getFirstIndex()));
+                                pageBuilder.buildCreatedTime(titleAndCreatedTime.getSecondIndex());
+                                pageBuilder.buildTitle(titleAndCreatedTime.getFirstIndex());
+                                pageBuilder.buildLink(element.attr("href"));
+                                pageBuilder.buildSource(sourceAndSourceLink.getFirstIndex());
+                                pageBuilder.buildSourceLink(sourceAndSourceLink.getSecondIndex());
+                                pageBuilder.buildInterview(statics.getInterview());
+                                pageBuilder.buildHotHits(statics.getHotHit());
+                                pageBuilder.buildComments(statics.getComments());
+                                pageBuilder.buildCategory(authorAndCategory.getSecondIndex());
 
-                        break;
+                                pageList.add(pageBuilder.buildPage());
+
+                                break;
+                            }
+                        }
+
+                        Thread.sleep(1000);
+
                     }
+                } catch (UnknownHostException uhe) {
+                    logger.error("UNKNOWN HOST: " + url);
+                } catch (HttpStatusException he) {
+                    logger.error(he.getStatusCode() + " CODE: " + url);
+                } catch (IOException ioe) {
+                    ioe.printStackTrace();
                 }
-
-                Thread.sleep(1000);
-
             }
         }
 

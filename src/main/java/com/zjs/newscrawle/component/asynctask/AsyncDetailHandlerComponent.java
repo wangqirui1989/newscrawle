@@ -1,18 +1,23 @@
 package com.zjs.newscrawle.component.asynctask;
 
+import com.alibaba.fastjson.JSONObject;
+import com.zjs.newscrawle.config.WebConfig;
 import com.zjs.newscrawle.pojo.Statics;
 import com.zjs.newscrawle.pojo.TwoTuple;
 import com.zjs.newscrawle.utils.HeadingEnum;
+import com.zjs.newscrawle.utils.Utils;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.Future;
 
 /**
@@ -23,12 +28,18 @@ import java.util.concurrent.Future;
 @Component
 public class AsyncDetailHandlerComponent {
 
-    /**
-     * 评论节点标志
-     */
-    private static final String COMMENT_NODE = "comment";
+    @Resource
+    private WebConfig webConfig;
 
-    private static final String HREF_ATTR = "href";
+    private String commentJsonUrl;
+
+    private String agent;
+
+    @PostConstruct
+    public void init() {
+        commentJsonUrl = webConfig.getCommentUrl();
+        agent = webConfig.getAgent();
+    }
 
     /**
      *
@@ -41,8 +52,17 @@ public class AsyncDetailHandlerComponent {
      */
     @Async
     public Future<TwoTuple<String>> getTitleAndCreatedTime(Element articleNode) {
-        return new AsyncResult<>(new TwoTuple<>(getElementTextByClass("main-title", articleNode),
-                getElementTextByClass("date", articleNode)));
+
+        Elements h1 = articleNode.getElementsByTag("h1");
+        String title = null;
+        if (h1.size() != 0) {
+            title = h1.first().text();
+        }
+
+        String createdTimeFromClassDate = getElementTextByClass("date", articleNode);
+        String createdTime = (createdTimeFromClassDate == null) ? getElementTextByClass("time-source", articleNode) : createdTimeFromClassDate;
+
+        return new AsyncResult<>(new TwoTuple<>(title, createdTime));
     }
 
     /**
@@ -56,19 +76,48 @@ public class AsyncDetailHandlerComponent {
      */
     @Async
     public Future<TwoTuple<String>> getAuthorAndCategory(Element articleNode) {
-        Elements nodes = articleNode.getElementsByTag("a");
-        String category = null;
-        if (nodes != null ) {
-            Iterator<Element> iterator = nodes.iterator();
-            while (iterator.hasNext()) {
-                Element node = iterator.next();
-                category = HeadingEnum.getCategoryByUrl(node.attr(HREF_ATTR));
-                if (category != null) {
-                    break;
-                }
-            }
+        String author = getElementTextByClass("show_author", articleNode);
+        String editor = getElementTextByClass("article-editor", articleNode);
+
+        String resultAuthor = (author == null) ? editor : author;
+
+        return new AsyncResult<>(new TwoTuple<>(resultAuthor, getCategory(articleNode)));
+    }
+
+    /**
+     *
+     * @author Qirui Wang
+     * @date 22/8/18 16:47
+     * @usage 获得类别
+     * @method getCategory
+     * @param articleNode
+     * @return java.lang.String
+     */
+    private String getCategory(Element articleNode) {
+        String category = getCategoryFromNodes(articleNode.getElementsByClass("channel-path"));
+
+        if (category == null) {
+            category = getCategoryFromNodes(articleNode.getElementsByClass("bread"));
         }
-        return new AsyncResult<>(new TwoTuple<>(getElementTextByClass("show_author", articleNode), category));
+
+        return category;
+    }
+
+    /**
+     *
+     * @author Qirui Wang
+     * @date 22/8/18 23:25
+     * @usage 从节点获取分类
+     * @method getCategoryFromNodes
+     * @param nodes
+     * @return java.lang.String
+     */
+    private String getCategoryFromNodes(Elements nodes) {
+        String category = null;
+        if (nodes.size() == 1) {
+            category = nodes.first().child(0).text();
+        }
+        return category;
     }
 
     /**
@@ -108,6 +157,8 @@ public class AsyncDetailHandlerComponent {
                 Element node = iterator.next();
                 if (node.hasClass("source")) {
                     twoTuple = new TwoTuple<>(node.text(), node.attr("href"));
+                } else if (node.parent().hasAttr("data-sudaclick")) {
+                    twoTuple = new TwoTuple<>(node.text(), node.attr("href"));
                 }
             }
         }
@@ -124,13 +175,12 @@ public class AsyncDetailHandlerComponent {
      * @return com.zjs.newscrawle.pojo.Statics
      */
     @Async
-    public Future<Statics> getStatics(Element articleNode) {
-        Element node = articleNode.attr("node-type", COMMENT_NODE);
+    public Future<Statics> getStatics(Element articleNode, String originUrl) {
         Statics statics = new Statics();
-        if (node != null) {
-            String url = node.attr(HREF_ATTR);
-            if (url != null && url.length() != 0) {
-                statics = getStaticsFromCommentPage(url);
+        String category = getCategory(articleNode);
+        if (category != null) {
+            if (originUrl.contains("doc")) {
+                getStaticsFromCommentPage(category, statics, originUrl);
             }
         }
         return new AsyncResult<>(statics);
@@ -142,29 +192,50 @@ public class AsyncDetailHandlerComponent {
      * @date 18/8/18 20:54
      * @usage 从评论页中获取指定数据
      * @method getStaticsFromCommentPage
-     * @param url
+     * @param category
+     * @param statics
      * @return com.zjs.newscrawle.pojo.Statics
      */
-    private Statics getStaticsFromCommentPage(String url) {
+    @SuppressWarnings("unchecked")
+    private void getStaticsFromCommentPage(String category, Statics statics, String url) {
 
-        Statics statics = new Statics();
+            StringBuilder stringBuilder = new StringBuilder();
+            String id = Utils.extractNewsId(url);
+            String categoryCode = HeadingEnum.getCodeByCategory(category);
 
-        try {
-            Document doc = Jsoup.connect(url).get();
-            Element node = doc.attr("comment-type", "count");
-            if (node != null) {
-                String comment = node.child(0).text();
-                String interview = node.child(2).text();
+            if (categoryCode != null) {
+                String commentUrl = stringBuilder.append(commentJsonUrl)
+                        .append("channel=")
+                        .append(categoryCode)
+                        .append("&newsid=comos-")
+                        .append(id).toString();
 
+                String doc = null;
+                try {
+                    doc = Jsoup.connect(commentUrl).timeout(50000).userAgent(agent).ignoreContentType(true).execute().body();
+                } catch (IOException ioe) {
+                    ioe.printStackTrace();
+                }
+
+                JSONObject jsonObject = JSONObject.parseObject(doc);
+
+                Map<String, Object> map = (Map<String, Object>) jsonObject;
+
+                Map<String, Object> countMap = (Map<String, Object>) ((Map<String, Object>) map.get("result")).get("count");
+                // 参与
+                String total = countMap.get("total").toString();
+
+                // 评论
+                String comment = countMap.get("show").toString();
+
+                // 热点数
+                String hotHit = countMap.get("qreply").toString();
+
+                statics.setHotHit(Integer.parseInt(hotHit));
                 statics.setComments(Integer.parseInt(comment));
-                statics.setInterview(Integer.parseInt(interview));
-                statics.setHotHit(Integer.parseInt(interview));
+                statics.setInterview(Integer.parseInt(total));
             }
-        } catch (IOException ioe) {
-            ioe.printStackTrace();
-        }
 
-        return statics;
     }
 
 }

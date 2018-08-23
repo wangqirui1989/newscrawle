@@ -60,6 +60,27 @@ public class Utils {
         return true;
     }
 
+    /**
+     *
+     * @author Qirui Wang
+     * @date 22/8/18 17:07
+     * @usage 抽取新闻id
+     * @method extractNewsId
+     * @param url
+     * @return java.lang.String
+     */
+    public static String extractNewsId(String url) {
+        int strLength = url.length();
+        int lastIndex = url.contains(".shtml") ? (strLength - 5) : (strLength - 4);
+
+        url = url.substring(0, lastIndex);
+        String[] urlArray = url.split("/");
+
+        String id = urlArray[urlArray.length - 1];
+
+        return id.substring(5, id.length() - 1);
+    }
+
     public static class PageBuilder {
         private Page page;
 

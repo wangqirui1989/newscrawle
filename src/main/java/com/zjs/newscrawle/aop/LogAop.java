@@ -22,7 +22,8 @@ import java.util.Arrays;
 public class LogAop {
 
     @Pointcut("execution(* com.zjs.newscrawle.component.DetailHandler.*(..)) ||" +
-            "execution(* com.zjs.newscrawle.service.NewsCrawlerService.*(..))")
+            "execution(* com.zjs.newscrawle.service.NewsCrawlerService.*(..)) || " +
+            "execution(* com.zjs.newscrawle.component.asynctask.AsyncDetailHandlerComponent.*(..))")
     public void serviceExecutor() {
 
     }

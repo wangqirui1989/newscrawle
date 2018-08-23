@@ -1,19 +1,19 @@
 package com.zjs.newscrawle.service;
 
 import com.zjs.newscrawle.component.DetailHandler;
+import com.zjs.newscrawle.component.asynctask.AsyncClassifierComponent;
+import com.zjs.newscrawle.config.TaskExecutorConfig;
 import com.zjs.newscrawle.config.WebConfig;
 import com.zjs.newscrawle.pojo.Page;
 import com.zjs.newscrawle.pojo.TwoTuple;
-import com.zjs.newscrawle.utils.HeadingEnum;
 import com.zjs.newscrawle.utils.Utils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.io.IOException;
 import java.util.*;
@@ -32,14 +32,26 @@ public class NewsCrawlerService {
     private WebConfig webConfig;
 
     @Resource
+    private TaskExecutorConfig taskExecutorConfig;
+
+    @Resource
     private DetailHandler detailHandler;
+
+    @Resource
+    private AsyncClassifierComponent asyncClassifierComponent;
 
     private Elements links;
 
     /**
      * 自定义线程数
      */
-    private static final int THREAD_NUM = 70;
+    private int threadNum;
+
+    @PostConstruct
+    public void init() {
+        int num = taskExecutorConfig.getCorePoolSize()/2;
+        threadNum = (num == 0)? 1 : num;
+    }
 
     /***
      *
@@ -61,47 +73,6 @@ public class NewsCrawlerService {
             ioe.printStackTrace();
         }
     }
-
-    /**
-     *
-     * @author Qirui Wang
-     * @date 13/8/18 21:25
-     * @usage 获得详细链接
-     * @method getDetailLinks
-     * @param
-     * @return java.util.Set<org.jsoup.nodes.Element>
-     */
-    @Async
-    public Future<Set<Element>> getDetailLinks() {
-        Set<Element> detailLinkSet = new HashSet<>();
-        for (Element link : links) {
-            if (Utils.validDetail(link)) {
-                detailLinkSet.add(link);
-            }
-        }
-        return new AsyncResult<>(detailLinkSet);
-    }
-
-    /**
-     *
-     * @author Qirui Wang
-     * @date 13/8/18 21:44
-     * @usage 获得指定标题链接
-     * @method getHeadingLinks
-     * @param
-     * @return java.util.concurrent.Future<java.util.Set<org.jsoup.nodes.Element>>
-     */
-    @Async
-    public Future<Set<Element>> getHeadingLinks() {
-        Set<Element> headLinkSet = new HashSet<>();
-        for (Element link : links) {
-            if (HeadingEnum.isValid(link)) {
-                headLinkSet.add(link);
-            }
-        }
-
-        return new AsyncResult<>(headLinkSet);
-    }
     
     /**  
      *    
@@ -118,8 +89,8 @@ public class NewsCrawlerService {
         Set<Element> headSet;
         Set<Element> detailSet;
 
-        Future<Set<Element>> headingTask = getHeadingLinks();
-        Future<Set<Element>> detailTask = getDetailLinks();
+        Future<Set<Element>> headingTask = asyncClassifierComponent.getHeadingLinks(links);
+        Future<Set<Element>> detailTask = asyncClassifierComponent.getDetailLinks(links);
 
         while (true) {
             if (headingTask.isDone() && detailTask.isDone()) {
@@ -147,7 +118,7 @@ public class NewsCrawlerService {
     public List<Page> detailHandler(Set<Element> set) throws InterruptedException, ExecutionException {
         //  构建任务组
         Set<Element>[] elementArray;
-        Set[] tempArray = new Set[THREAD_NUM];
+        Set[] tempArray = new Set[threadNum];
         elementArray = (Set<Element>[]) tempArray;
 
         // 任务分组
@@ -155,7 +126,7 @@ public class NewsCrawlerService {
         int index = 0;
         while (iterator.hasNext()) {
             Element element = iterator.next();
-            int sequence = index % THREAD_NUM;
+            int sequence = index % threadNum;
             if (elementArray[sequence] == null) {
                 elementArray[sequence] = new HashSet<Element>(){{
                     add(element);
@@ -169,7 +140,7 @@ public class NewsCrawlerService {
 
         // 执行异步操作
         List<Future<List<Page>>> threadList = new ArrayList<>();
-        for (int i = 0;  i< THREAD_NUM; i++) {
+        for (int i = 0;  i< threadNum; i++) {
             threadList.add(detailHandler.detailAsyncTask(elementArray[i]));
         }
 
@@ -177,7 +148,7 @@ public class NewsCrawlerService {
 
         while (true) {
             if (Utils.checkThreadArray(threadList)) {
-                for (int num = 0; num < THREAD_NUM; num++) {
+                for (int num = 0; num < threadNum; num++) {
                     resultList.addAll(threadList.get(num).get());
                 }
                 break;

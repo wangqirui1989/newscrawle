@@ -39,6 +39,7 @@ public class NewscrawleApplicationTests {
             Page page = iterator.next();
             System.out.println(page.toString());
         }
+        System.out.println(resultList.size());
     }
 
 }
