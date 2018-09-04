@@ -11,6 +11,7 @@ public class UtilsConstant {
     "http://m.sina.cn", "http://roll", "http://video.sina.com.cn", "http://cd", "http://club.astro.sina.com.cn",
             "http://photo", "http://www.sina.com.cn/contactus.html", "http://k.sina", "http://help.sina.com.cn/",
     "http://tech.sina.com.cn/focus/sinahelp.shtml", "http://auto.sina.com.cn", "http://bj", "http://m.sina.com.cn", "http://city.sina.com.cn",
-            "http://www.sina.com.cn/intro/lawfirm.shtml", "http://sports.sina.com.cn/l/kaijiang", "http://news.sina.com.cn/media.html", "http://edu.sina.com.cn/toplist/day_hotnews.shtml"};
+            "http://www.sina.com.cn/intro/lawfirm.shtml", "http://sports.sina.com.cn/l/kaijiang", "http://news.sina.com.cn/media.html", "http://edu.sina.com.cn/toplist/day_hotnews.shtml",
+    "#", "javascript", "exe", "saxn.sina.com.cn"};
 
 }

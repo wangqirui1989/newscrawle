@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
@@ -66,7 +67,7 @@ public class DetailHandler {
             if (!filter.isValid(url)) {
                 try {
 
-                    Document doc = Jsoup.connect(url).timeout(50000).get();
+                    Document doc = Jsoup.connect(url.trim()).timeout(50000).get();
 
                     if (doc != null) {
 
@@ -107,11 +108,14 @@ public class DetailHandler {
                         Thread.sleep(1000);
 
                     }
+
+                } catch (MalformedURLException male) {
+                    logger.error("MalformedURLException: " + url);
                 } catch (UnknownHostException uhe) {
                     logger.error("UNKNOWN HOST: " + url);
                 } catch (HttpStatusException he) {
                     logger.error(he.getStatusCode() + " CODE: " + url);
-                } catch (IOException ioe) {
+                }  catch (IOException ioe) {
                     ioe.printStackTrace();
                 }
             }

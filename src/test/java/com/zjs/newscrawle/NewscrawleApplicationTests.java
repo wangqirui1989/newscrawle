@@ -26,7 +26,8 @@ public class NewscrawleApplicationTests {
         long startTime = System.currentTimeMillis();
         newsCrawlerService.setLinks();
         TwoTuple<Set<Element>> twoTuple = newsCrawlerService.generateHeadingAndDetails();
-        printResult(newsCrawlerService.detailHandler(twoTuple.getSecondIndex()));
+        //printResult(newsCrawlerService.detailHandler(twoTuple.getSecondIndex()));
+        printResult(newsCrawlerService.headHandler(twoTuple.getFirstIndex()));
         long endTime = System.currentTimeMillis();
 
         System.out.println("TIME CONSUMING: " + (endTime - startTime) + "ms");

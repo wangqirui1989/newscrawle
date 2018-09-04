@@ -51,13 +51,8 @@ public class Utils {
      * @param list
      * @return boolean
      */
-    public static boolean checkThreadArray(List<Future<List<Page>>> list) {
-        for (Future<List<Page>> task : list) {
-            if (!task.isDone()) {
-                return false;
-            }
-        }
-        return true;
+    public static <E> boolean checkThreadArray(List<Future<E>> list, ThreadListCheck<E> threadListCheck) {
+        return threadListCheck.isDone(list);
     }
 
     /**

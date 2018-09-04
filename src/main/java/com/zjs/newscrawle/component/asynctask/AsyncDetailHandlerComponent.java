@@ -113,9 +113,12 @@ public class AsyncDetailHandlerComponent {
      * @return java.lang.String
      */
     private String getCategoryFromNodes(Elements nodes) {
-        String category = null;
+        String category = "";
         if (nodes.size() == 1) {
-            category = nodes.first().child(0).text();
+            Element firstNode = nodes.first();
+            if (firstNode.children().size() != 0) {
+                category = nodes.first().child(0).text();
+            }
         }
         return category;
     }
@@ -221,19 +224,27 @@ public class AsyncDetailHandlerComponent {
 
                 Map<String, Object> map = (Map<String, Object>) jsonObject;
 
-                Map<String, Object> countMap = (Map<String, Object>) ((Map<String, Object>) map.get("result")).get("count");
-                // 参与
-                String total = countMap.get("total").toString();
+                if (map.containsKey("result")) {
 
-                // 评论
-                String comment = countMap.get("show").toString();
+                    Map<String, Object> tempMap = (Map<String, Object>) map.get("result");
 
-                // 热点数
-                String hotHit = countMap.get("qreply").toString();
+                    if (tempMap.containsKey("count")) {
+                        Map<String, Object> countMap = (Map<String, Object>) tempMap.get("count");
 
-                statics.setHotHit(Integer.parseInt(hotHit));
-                statics.setComments(Integer.parseInt(comment));
-                statics.setInterview(Integer.parseInt(total));
+                        // 参与
+                        String total = countMap.containsKey("total") ? countMap.get("total").toString() : "0";
+
+                        // 评论
+                        String comment = countMap.containsKey("show") ? countMap.get("show").toString() : "0";
+
+                        // 热点数
+                        String hotHit = countMap.containsKey("qreply") ? countMap.get("qreply").toString() : "0";
+
+                        statics.setHotHit(Integer.parseInt(hotHit));
+                        statics.setComments(Integer.parseInt(comment));
+                        statics.setInterview(Integer.parseInt(total));
+                    }
+                }
             }
 
     }

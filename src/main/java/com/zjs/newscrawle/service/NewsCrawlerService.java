@@ -1,11 +1,13 @@
 package com.zjs.newscrawle.service;
 
 import com.zjs.newscrawle.component.DetailHandler;
+import com.zjs.newscrawle.component.HeadHandler;
 import com.zjs.newscrawle.component.asynctask.AsyncClassifierComponent;
 import com.zjs.newscrawle.config.TaskExecutorConfig;
 import com.zjs.newscrawle.config.WebConfig;
 import com.zjs.newscrawle.pojo.Page;
 import com.zjs.newscrawle.pojo.TwoTuple;
+import com.zjs.newscrawle.utils.ThreadListCheck;
 import com.zjs.newscrawle.utils.Utils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -36,6 +38,9 @@ public class NewsCrawlerService {
 
     @Resource
     private DetailHandler detailHandler;
+
+    @Resource
+    private HeadHandler headHandler;
 
     @Resource
     private AsyncClassifierComponent asyncClassifierComponent;
@@ -108,14 +113,102 @@ public class NewsCrawlerService {
     /**
      *
      * @author Qirui Wang
+     * @date 4/9/18 21:31
+     * @usage 处理标题页面
+     * @method headHandler
+     * @param set
+     * @return java.util.List<com.zjs.newscrawle.pojo.Page>
+     */
+    public List<Page> headHandler(Set<Element> set) throws InterruptedException, ExecutionException {
+        // 构建任务分组
+        Set<Element>[] elementArray = generateTaskGroup(set);
+
+        // 执行异步操作
+        List<Future<Set<Element>>> threadList = new ArrayList<>();
+        for (int i = 0; i < elementArray.length; i++) {
+            threadList.add(headHandler.getDetailFromHead(elementArray[i]));
+        }
+
+        Set<Element> resultSet = new HashSet<>();
+
+        while (true) {
+            if (Utils.checkThreadArray(threadList, new ThreadListCheck<Set<Element>>() {
+                @Override
+                public boolean isDone(List<Future<Set<Element>>> list) {
+                    for (Future<Set<Element>> task : list) {
+                        if (!task.isDone()) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+            })) {
+                for (int num = 0; num < elementArray.length; num++) {
+                    resultSet.addAll(threadList.get(num).get());
+                }
+                break;
+            }
+        }
+
+        return detailHandler(resultSet);
+    }
+
+    /**
+     *
+     * @author Qirui Wang
      * @date 21/8/18 16:57
      * @usage 处理详细页
      * @method detailHandler
      * @param set
      * @return java.util.List<com.zjs.newscrawle.pojo.Page>
      */
-    @SuppressWarnings("unchecked")
     public List<Page> detailHandler(Set<Element> set) throws InterruptedException, ExecutionException {
+        // 构建任务分组
+        Set<Element>[] elementArray = generateTaskGroup(set);
+
+        // 执行异步操作
+        List<Future<List<Page>>> threadList = new ArrayList<>();
+        for (int i = 0;  i< elementArray.length; i++) {
+            threadList.add(detailHandler.detailAsyncTask(elementArray[i]));
+        }
+
+        List<Page> resultList = new ArrayList<>();
+
+        while (true) {
+            if (Utils.checkThreadArray(threadList, new ThreadListCheck<List<Page>>() {
+                @Override
+                public boolean isDone(List<Future<List<Page>>> list) {
+                    for (Future<List<Page>> task : list) {
+                        if (!task.isDone()) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+            })) {
+                for (int num = 0; num < elementArray.length; num++) {
+                    resultList.addAll(threadList.get(num).get());
+                }
+                break;
+            }
+        }
+
+        Thread.sleep(1000);
+
+        return resultList;
+    }
+
+    /**
+     *
+     * @author Qirui Wang
+     * @date 4/9/18 21:19
+     * @usage 构建任务分组
+     * @method generateTaskGroup
+     * @param set
+     * @return java.util.Set<org.jsoup.nodes.Element>[]
+     */
+    @SuppressWarnings("unchecked")
+    private Set<Element>[] generateTaskGroup(Set<Element> set) {
         //  构建任务组
         Set<Element>[] elementArray;
         Set[] tempArray = new Set[threadNum];
@@ -138,26 +231,7 @@ public class NewsCrawlerService {
             index++;
         }
 
-        // 执行异步操作
-        List<Future<List<Page>>> threadList = new ArrayList<>();
-        for (int i = 0;  i< threadNum; i++) {
-            threadList.add(detailHandler.detailAsyncTask(elementArray[i]));
-        }
-
-        List<Page> resultList = new ArrayList<>();
-
-        while (true) {
-            if (Utils.checkThreadArray(threadList)) {
-                for (int num = 0; num < threadNum; num++) {
-                    resultList.addAll(threadList.get(num).get());
-                }
-                break;
-            }
-        }
-
-        Thread.sleep(1000);
-
-        return resultList;
+        return elementArray;
     }
 
 }
